@@ -1,5 +1,4 @@
-// panel.js — updated Find & Replace logic
-console.log("[Find & Replace Panel] loaded");
+console.log("[Find & Replace] panel loaded");
 
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");
@@ -28,48 +27,40 @@ function insertAsHtml(originalHtml, re, replacement, preserveHtml) {
   }
 }
 
-// Get items (all or selection)
-async function getTargetItems(selectionOnly) {
-  if (selectionOnly) {
-    return (await miro.board.getSelection());
+async function getItems(scope) {
+  if (scope === 'selection') {
+    return await miro.board.getSelection();
   } else {
-    return (await miro.board.get());
+    return await miro.board.get();
   }
 }
 
-// Check if item matches the selected object type filter
-function matchesTypeFilter(item, typeFilter) {
+function matchesType(item, typeFilter) {
   if (!typeFilter) return true;
   return item.type === typeFilter;
 }
 
-// Determine if item is supported by type
-function isSupported(item) {
-  return ["text", "sticky_note", "shape", "card"].includes(item.type);
+function supported(item) {
+  return ["text","sticky_note","shape","card"].includes(item.type);
 }
 
-function getMatchesPreview(item, re, { preserveHtml }) {
-  let count = 0, sample = "";
+function getMatchInfo(item, re, preserveHtml) {
   let hay = "";
   if (["text","sticky_note","shape"].includes(item.type)) {
     hay = preserveHtml ? item.content : stripHtml(item.content || "");
-    const matches = hay.match(re);
-    count = matches ? matches.length : 0;
-    sample = hay.slice(0, 140);
   } else if (item.type === "card") {
     hay = `${item.title || ""}\n${item.description || ""}`;
-    const matches = hay.match(re);
-    count = matches ? matches.length : 0;
-    sample = hay.slice(0, 140);
+  } else {
+    return { count:0, sample:"" };
   }
-  return { count, sample };
+  const matches = hay.match(re);
+  return { count: matches ? matches.length : 0, sample: hay.slice(0, 200) };
 }
 
-async function doReplace(items, re, replacement, { preserveHtml }) {
-  let totalReplacements = 0;
-  let touched = 0;
+async function doReplace(items, re, replacement, preserveHtml) {
+  let total = 0, touched = 0;
   for (const item of items) {
-    if (!isSupported(item)) continue;
+    if (!supported(item)) continue;
     let changed = false;
     if (["text","sticky_note","shape"].includes(item.type)) {
       const before = item.content || "";
@@ -77,112 +68,105 @@ async function doReplace(items, re, replacement, { preserveHtml }) {
       if (after !== before) {
         item.content = after;
         changed = true;
-        const matches = before.match(re);
-        totalReplacements += matches ? matches.length : 0;
+        total += (before.match(re) || []).length;
       }
     } else if (item.type === "card") {
       let count = 0;
       if (typeof item.title === "string") {
-        const before = item.title;
-        const after = before.replace(re, () => { count++; return replacement; });
-        if (after !== before) {
-          item.title = after;
+        const newTitle = item.title.replace(re, () => { count++; return replacement; });
+        if (newTitle !== item.title) {
+          item.title = newTitle;
           changed = true;
         }
       }
       if (typeof item.description === "string") {
-        const before = item.description;
-        const after = before.replace(re, () => { count++; return replacement; });
-        if (after !== before) {
-          item.description = after;
+        const newDesc = item.description.replace(re, () => { count++; return replacement; });
+        if (newDesc !== item.description) {
+          item.description = newDesc;
           changed = true;
         }
       }
-      if (changed) {
-        totalReplacements += count;
-      }
+      if (changed) total += count;
     }
     if (changed) {
       await item.sync();
       touched++;
     }
   }
-  return { totalReplacements, touched };
+  return { total, touched };
 }
 
-function renderResults(list, totals) {
-  const el = document.getElementById("results");
-  el.innerHTML = "";
+function renderResults(list, totalMatches, totalItems) {
+  const container = document.getElementById("results");
+  container.innerHTML = "";
   if (list.length === 0) {
-    el.innerHTML = `<div class="small">No matches.</div>`;
+    container.innerHTML = "<div class='small'>No matches found.</div>";
     return;
   }
   list.forEach(r => {
-    const div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML = `<div><strong>${r.type}</strong> <span class="badge">matches: <span class="counter">${r.count}</span></span></div>
-      <div class="small">${r.sample.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}...</div>`;
-    el.appendChild(div);
+    const d = document.createElement("div");
+    d.className = "item";
+    d.innerHTML = `<div><strong>${r.type}</strong> — ${r.count} match(es)</div>
+                   <div class='small'>… ${r.sample} …</div>`;
+    container.appendChild(d);
   });
   const footer = document.createElement("div");
   footer.className = "small";
   footer.style.marginTop = "8px";
-  footer.innerHTML = `<strong>Total matches:</strong> <span class="counter">${totals.matches}</span> across <span class="counter">${totals.items}</span> items.`;
-  el.appendChild(footer);
+  footer.innerHTML = `<strong>Total matches:</strong> ${totalMatches} — in <strong>${totalItems}</strong> item(s).`;
+  container.appendChild(footer);
 }
 
 document.getElementById("search").addEventListener("click", async () => {
   console.log("[Find & Replace] Search clicked");
   const find = document.getElementById("find").value;
-  const selectionOnly = document.getElementById("opt-selection").checked;
+  const scope = document.getElementById("scope").value;
+  const typeFilter = document.getElementById("filter-type").value;
   const caseSensitive = document.getElementById("opt-case").checked;
   const wholeWord = document.getElementById("opt-whole").checked;
   const regex = document.getElementById("opt-regex").checked;
   const preserveHtml = document.getElementById("opt-html").checked;
-  const filterType = document.getElementById("filter-type").value;
 
   if (!find) {
-    document.getElementById("results").innerHTML = '<div class="small">Enter something to find.</div>';
+    alert("Please enter text to find.");
     return;
   }
 
   const re = asRegex(find, { caseSensitive, wholeWord, regex });
-  const allItems = await getTargetItems(selectionOnly);
-  const items = allItems.filter(item => isSupported(item) && matchesTypeFilter(item, filterType));
+  const items = (await getItems(scope)).filter(item => supported(item) && matchesType(item, typeFilter));
+  const resultList = [];
+  let totalMatches = 0;
 
-  const rows = [];
-  let matches = 0;
   for (const it of items) {
-    const { count, sample } = getMatchesPreview(it, re, { preserveHtml });
+    const { count, sample } = getMatchInfo(it, re, preserveHtml);
     if (count > 0) {
-      rows.push({ id: it.id, type: it.type, count, sample });
-      matches += count;
+      resultList.push({ id: it.id, type: it.type, count, sample });
+      totalMatches += count;
     }
   }
-  renderResults(rows, { matches, items: rows.length });
+  renderResults(resultList, totalMatches, resultList.length);
 });
 
 document.getElementById("replace-all").addEventListener("click", async () => {
   console.log("[Find & Replace] Replace All clicked");
   const find = document.getElementById("find").value;
   const replacement = document.getElementById("replace").value || "";
-  const selectionOnly = document.getElementById("opt-selection").checked;
+  const scope = document.getElementById("scope").value;
+  const typeFilter = document.getElementById("filter-type").value;
   const caseSensitive = document.getElementById("opt-case").checked;
   const wholeWord = document.getElementById("opt-whole").checked;
   const regex = document.getElementById("opt-regex").checked;
   const preserveHtml = document.getElementById("opt-html").checked;
-  const filterType = document.getElementById("filter-type").value;
 
   if (!find) {
-    document.getElementById("results").innerHTML = '<div class="small">Enter something to find.</div>';
+    alert("Please enter text to find.");
     return;
   }
 
   const re = asRegex(find, { caseSensitive, wholeWord, regex });
-  const allItems = await getTargetItems(selectionOnly);
-  const items = allItems.filter(item => isSupported(item) && matchesTypeFilter(item, filterType));
+  const items = (await getItems(scope)).filter(item => supported(item) && matchesType(item, typeFilter));
 
-  const { totalReplacements, touched } = await doReplace(items, re, replacement, { preserveHtml });
-  console.log(`[Find & Replace] replaced: ${totalReplacements} occurrences in ${touched} items`);
-  document.getElementById("results").innerHTML = `<div class="small">Replaced <span class="counter">${totalReplacements}</span> occurrence(s) in <span class="counter">${touched}</span> item(s).</div>`;
+  const { total, touched } = await doReplace(items, re, replacement, preserveHtml);
+  console.log(`[Find & Replace] Replaced ${total} occurrences in ${touched} items`);
+  document.getElementById("results").innerHTML = `<div class="small">Replaced ${total} occurrence(s) in ${touched} item(s).</div>`;
 });
