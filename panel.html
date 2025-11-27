@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Find & Replace — Panel</title>
+  <title>Find & Replace — Search Panel</title>
   <script src="https://miro.com/app/static/sdk/v2/miro.js"></script>
   <script defer src="./panel.js"></script>
   <style>
@@ -15,135 +15,73 @@
       --border:#334155;
       --text:#e2e8f0;
     }
-    html, body {
-      height:100%;
-      margin:0;
-      background:var(--bg);
-      color:var(--text);
-      font-family: sans-serif;
-    }
-    .container {
-      padding:16px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-    .row {
-      display:grid;
-      grid-template-columns:120px 1fr;
-      gap:10px;
-      align-items:center;
-    }
-    input[type="text"], select, textarea {
-      width:100%;
-      padding:10px;
-      border:1px solid var(--border);
-      border-radius:10px;
-      background:var(--surface);
-      color:var(--text);
-    }
-    textarea { min-height:72px; }
-    .options, .filter-row {
-      display:flex;
-      gap:16px;
-      flex-wrap:wrap;
-      color:var(--muted);
-    }
-    .options label, .filter-row label {
-      display:flex;
-      gap:8px;
-      align-items:center;
-      cursor:pointer;
-    }
-    .btns {
-      display:flex;
-      gap:10px;
-      margin-top:6px;
-      flex-wrap:wrap;
-    }
-    button {
-      padding:10px 14px;
-      border:1px solid var(--border);
-      border-radius:999px;
-      background:var(--surface2);
-      color:var(--text);
-      cursor:pointer;
-    }
-    button.primary {
-      background:#2563eb;
-      border-color:#1e3a8a;
-    }
-    .results {
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:10px;
-      background:var(--surface2);
-      max-height:260px;
-      overflow:auto;
-    }
-    .badge {
-      display:inline-block;
-      padding:2px 8px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      font-size:12px;
-      color:var(--muted);
-      margin-left:8px;
-    }
-    .small { font-size:12px; color:var(--muted); }
-    .item {
-      border-bottom:1px dashed var(--border);
-      padding:8px 0;
-    }
+    html, body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family:sans-serif; }
+    .container { padding:16px; display:flex; flex-direction:column; gap:12px; }
+    .row { display:flex; align-items:center; gap:10px; }
+    label { min-width:120px; }
+    input[type=text], select { flex:1; padding:8px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); }
+    .options { display:flex; flex-wrap:wrap; gap:16px; color:var(--muted); }
+    .options label { display:flex; align-items:center; gap:6px; cursor:pointer; }
+    .btns { display:flex; gap:10px; margin-top:8px; }
+    button { padding:8px 14px; border:1px solid var(--border); border-radius:999px; background:var(--surface2); color:var(--text); cursor:pointer; }
+    button.primary { background: #2563eb; border-color: #1e3a8a; }
+    .results { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px; max-height:240px; overflow:auto; }
+    .item { border-bottom:1px dashed var(--border); padding:6px 0; }
     .item:last-child { border-bottom:none; }
-    .counter { font-variant-numeric:tabular-nums; }
+    .small { font-size:12px; color:var(--muted); }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Object-type filter first -->
+    <!-- Selection vs board toggle -->
     <div class="row">
-      <label for="filter-type">Object type</label>
-      <select id="filter-type">
-        <option value="">All</option>
-        <option value="sticky_note">Sticky notes</option>
-        <option value="shape">Shapes / text boxes / shapes</option>
-        <option value="card">Cards</option>
-        <option value="text">Free-text items</option>
+      <label>Scope</label>
+      <select id="scope">
+        <option value="all">Whole board</option>
+        <option value="selection">Current selection only</option>
       </select>
     </div>
 
-    <!-- (Optional) If you want more filtering later — sticky colour, tags, etc — you could insert UI fields here -->
+    <!-- Object-type filter -->
+    <div class="row">
+      <label>Object type</label>
+      <select id="filter-type">
+        <option value="">All</option>
+        <option value="sticky_note">Sticky notes</option>
+        <option value="shape">Shapes / Text boxes</option>
+        <option value="card">Cards</option>
+        <option value="text">Text (text widgets)</option>
+      </select>
+    </div>
 
     <!-- Find / Replace inputs -->
     <div class="row">
-      <label for="find">Find</label>
+      <label>Find</label>
       <input id="find" type="text" placeholder="text or /regex/" />
     </div>
     <div class="row">
-      <label for="replace">Replace</label>
-      <input id="replace" type="text" placeholder="replacement (leave blank to just highlight)" />
+      <label>Replace</label>
+      <input id="replace" type="text" placeholder="replacement (optional)" />
     </div>
 
     <!-- Options -->
     <div class="options">
-      <label><input id="opt-selection" type="checkbox" /> Only within current selection</label>
       <label><input id="opt-case" type="checkbox" /> Case sensitive</label>
       <label><input id="opt-whole" type="checkbox" /> Whole word</label>
       <label><input id="opt-regex" type="checkbox" /> Use regex</label>
       <label><input id="opt-html" type="checkbox" checked /> Preserve HTML markup</label>
     </div>
 
-    <!-- Buttons: "Search" instead of "Preview" -->
+    <!-- Buttons -->
     <div class="btns">
       <button id="search">Search</button>
       <button id="replace-all" class="primary">Replace All</button>
     </div>
 
-    <div class="small">Supported: Sticky notes, Shapes, Text, Cards. Use the object-type filter to limit by type.</div>
+    <div class="small">Supported types: Sticky notes, Shapes, Cards, Text. Use filters above to narrow down.</div>
 
     <div class="results" id="results">
-      <div class="small">Run search to see matches…</div>
+      <div class="small">Run search to view matches…</div>
     </div>
   </div>
 </body>
