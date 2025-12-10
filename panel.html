@@ -26,14 +26,14 @@
     button { padding:8px 14px; border:1px solid var(--border); border-radius:999px; background:var(--surface2); color:var(--text); cursor:pointer; }
     button.primary { background: #2563eb; border-color: #1e3a8a; }
     .results { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px; max-height:240px; overflow:auto; }
-    .item { border-bottom:1px dashed var(--border); padding:6px 0; }
+    .item { border-bottom:1px dashed var(--border); padding:6px 0; cursor: pointer; }
     .item:last-child { border-bottom:none; }
     .small { font-size:12px; color:var(--muted); }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Selection vs board toggle -->
+    <!-- Scope: whole board or selection -->
     <div class="row">
       <label>Scope</label>
       <select id="scope">
@@ -50,7 +50,7 @@
         <option value="sticky_note">Sticky notes</option>
         <option value="shape">Shapes / Text boxes</option>
         <option value="card">Cards</option>
-        <option value="text">Text (text widgets)</option>
+        <option value="text">Text widgets</option>
       </select>
     </div>
 
