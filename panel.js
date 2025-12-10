@@ -35,13 +35,13 @@ async function getItems(scope) {
   }
 }
 
+function supported(item) {
+  return ["text","sticky_note","shape","card"].includes(item.type);
+}
+
 function matchesType(item, typeFilter) {
   if (!typeFilter) return true;
   return item.type === typeFilter;
-}
-
-function supported(item) {
-  return ["text","sticky_note","shape","card"].includes(item.type);
 }
 
 function getMatchInfo(item, re, preserveHtml) {
@@ -51,7 +51,7 @@ function getMatchInfo(item, re, preserveHtml) {
   } else if (item.type === "card") {
     hay = `${item.title || ""}\n${item.description || ""}`;
   } else {
-    return { count:0, sample:"" };
+    return { count: 0, sample: "" };
   }
   const matches = hay.match(re);
   return { count: matches ? matches.length : 0, sample: hay.slice(0, 200) };
@@ -108,6 +108,21 @@ function renderResults(list, totalMatches, totalItems) {
     d.className = "item";
     d.innerHTML = `<div><strong>${r.type}</strong> — ${r.count} match(es)</div>
                    <div class='small'>… ${r.sample} …</div>`;
+    d.addEventListener("click", async () => {
+      try {
+        console.log("[Find & Replace] Navigating to item", r.id);
+        const items = await miro.board.get({ id: r.id });
+        if (items.length > 0) {
+          const item = items[0];
+          await miro.board.selection.select([item]);
+          if (item.bounds) {
+            await miro.board.viewport.zoomTo(item.bounds, { margin: 100 });
+          }
+        }
+      } catch (err) {
+        console.warn("Navigation failed", err);
+      }
+    });
     container.appendChild(d);
   });
   const footer = document.createElement("div");
@@ -134,9 +149,9 @@ document.getElementById("search").addEventListener("click", async () => {
 
   const re = asRegex(find, { caseSensitive, wholeWord, regex });
   const items = (await getItems(scope)).filter(item => supported(item) && matchesType(item, typeFilter));
+
   const resultList = [];
   let totalMatches = 0;
-
   for (const it of items) {
     const { count, sample } = getMatchInfo(it, re, preserveHtml);
     if (count > 0) {
@@ -168,5 +183,6 @@ document.getElementById("replace-all").addEventListener("click", async () => {
 
   const { total, touched } = await doReplace(items, re, replacement, preserveHtml);
   console.log(`[Find & Replace] Replaced ${total} occurrences in ${touched} items`);
-  document.getElementById("results").innerHTML = `<div class="small">Replaced ${total} occurrence(s) in ${touched} item(s).</div>`;
+  document.getElementById("results").innerHTML =
+    `<div class="small">Replaced ${total} occurrence(s) in ${touched} item(s).</div>`;
 });
