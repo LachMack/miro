@@ -121,18 +121,26 @@ function renderResults(list, totalMatches, totalItems) {
       setStatus(`Clicked item id: ${r.id}`);
       try {
         const items = await miro.board.get({ id: r.id });
-        if (items.length > 0) {
-          const item = items[0];
-          await miro.board.selection.select([item]);
-          if (item.bounds) {
-            await miro.board.viewport.zoomTo(item.bounds, { margin: 100 });
-            setStatus(`Navigated to item ${r.id}`);
-          } else {
-            setStatus(`Item ${r.id} has no bounds — selected only`, true);
-          }
-        } else {
+        if (items.length === 0) {
           setStatus(`No item found for id ${r.id}`, true);
+          return;
         }
+        const item = items[0];
+
+        // Try to select if supported
+        if (miro.board.selection && typeof miro.board.selection.select === 'function') {
+          await miro.board.selection.select([item]);
+          console.log("[Find & Replace] Item selected.");
+        } else if (typeof miro.board.select === 'function') {
+          await miro.board.select({ id: item.id });
+          console.log("[Find & Replace] Item selected via board.select().");
+        } else {
+          console.warn("[Find & Replace] Select API not available; skipping selection");
+        }
+
+        // Always try to zoom
+        await miro.board.viewport.zoomTo(item);
+        setStatus(`Zoomed to item ${r.id}`);
       } catch (err) {
         console.warn("Navigation failed", err);
         setStatus(`Navigation failed: ${err.message}`, true);
