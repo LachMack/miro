@@ -15,25 +15,98 @@
       --border:#334155;
       --text:#e2e8f0;
     }
-    html, body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family:sans-serif; }
-    .container { padding:16px; display:flex; flex-direction:column; gap:12px; }
-    .row { display:flex; align-items:center; gap:10px; }
-    label { min-width:120px; }
-    input[type=text], select { flex:1; padding:8px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); }
-    .options { display:flex; flex-wrap:wrap; gap:16px; color:var(--muted); }
-    .options label { display:flex; align-items:center; gap:6px; cursor:pointer; }
-    .btns { display:flex; gap:10px; margin-top:8px; }
-    button { padding:8px 14px; border:1px solid var(--border); border-radius:999px; background:var(--surface2); color:var(--text); cursor:pointer; }
-    button.primary { background: #2563eb; border-color: #1e3a8a; }
-    .results { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px; max-height:240px; overflow:auto; }
-    .item { border-bottom:1px dashed var(--border); padding:6px 0; cursor: pointer; }
-    .item:last-child { border-bottom:none; }
-    .small { font-size:12px; color:var(--muted); }
+    html, body {
+      margin:0;
+      padding:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:sans-serif;
+      height:100vh;
+    }
+    .container {
+      display:flex;
+      flex-direction:column;
+      padding:16px;
+      height:100%;
+      box-sizing: border-box;
+    }
+    .row {
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    label {
+      min-width:120px;
+    }
+    input[type=text], select {
+      flex:1;
+      padding:8px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:var(--surface);
+      color:var(--text);
+    }
+    .options {
+      display:flex;
+      flex-wrap:wrap;
+      gap:16px;
+      color:var(--muted);
+    }
+    .options label {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      cursor:pointer;
+    }
+    .btns {
+      display:flex;
+      gap:10px;
+      margin-top:8px;
+    }
+    button {
+      padding:8px 14px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background:var(--surface2);
+      color:var(--text);
+      cursor:pointer;
+    }
+    button.primary {
+      background: #2563eb;
+      border-color: #1e3a8a;
+    }
+    #status {
+      font-size:12px;
+      color: lightgreen;
+      margin-bottom: 8px;
+    }
+    .results {
+      background:var(--surface2);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:10px;
+      overflow:auto;
+      flex:1;
+      min-height:0;
+    }
+    .item {
+      border-bottom:1px dashed var(--border);
+      padding:6px 0;
+      cursor: pointer;
+    }
+    .item:last-child {
+      border-bottom:none;
+    }
+    .small {
+      font-size:12px;
+      color:var(--muted);
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Scope: whole board or selection -->
+    <div id="status">Status: ready.</div>
+
     <div class="row">
       <label>Scope</label>
       <select id="scope">
@@ -42,7 +115,6 @@
       </select>
     </div>
 
-    <!-- Object-type filter -->
     <div class="row">
       <label>Object type</label>
       <select id="filter-type">
@@ -54,17 +126,16 @@
       </select>
     </div>
 
-    <!-- Find / Replace inputs -->
     <div class="row">
       <label>Find</label>
       <input id="find" type="text" placeholder="text or /regex/" />
     </div>
+
     <div class="row">
       <label>Replace</label>
       <input id="replace" type="text" placeholder="replacement (optional)" />
     </div>
 
-    <!-- Options -->
     <div class="options">
       <label><input id="opt-case" type="checkbox" /> Case sensitive</label>
       <label><input id="opt-whole" type="checkbox" /> Whole word</label>
@@ -72,7 +143,6 @@
       <label><input id="opt-html" type="checkbox" checked /> Preserve HTML markup</label>
     </div>
 
-    <!-- Buttons -->
     <div class="btns">
       <button id="search">Search</button>
       <button id="replace-all" class="primary">Replace All</button>
