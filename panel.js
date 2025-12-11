@@ -96,6 +96,14 @@ async function doReplace(items, re, replacement, preserveHtml) {
   return { total, touched };
 }
 
+function setStatus(msg, isError = false) {
+  const s = document.getElementById("status");
+  if (s) {
+    s.textContent = "Status: " + msg;
+    s.style.color = isError ? "salmon" : "lightgreen";
+  }
+}
+
 function renderResults(list, totalMatches, totalItems) {
   const container = document.getElementById("results");
   container.innerHTML = "";
@@ -109,18 +117,25 @@ function renderResults(list, totalMatches, totalItems) {
     d.innerHTML = `<div><strong>${r.type}</strong> — ${r.count} match(es)</div>
                    <div class='small'>… ${r.sample} …</div>`;
     d.addEventListener("click", async () => {
+      console.log("[Find & Replace] Result clicked — item id:", r.id);
+      setStatus(`Clicked item id: ${r.id}`);
       try {
-        console.log("[Find & Replace] Navigating to item", r.id);
         const items = await miro.board.get({ id: r.id });
         if (items.length > 0) {
           const item = items[0];
           await miro.board.selection.select([item]);
           if (item.bounds) {
             await miro.board.viewport.zoomTo(item.bounds, { margin: 100 });
+            setStatus(`Navigated to item ${r.id}`);
+          } else {
+            setStatus(`Item ${r.id} has no bounds — selected only`, true);
           }
+        } else {
+          setStatus(`No item found for id ${r.id}`, true);
         }
       } catch (err) {
         console.warn("Navigation failed", err);
+        setStatus(`Navigation failed: ${err.message}`, true);
       }
     });
     container.appendChild(d);
@@ -185,4 +200,5 @@ document.getElementById("replace-all").addEventListener("click", async () => {
   console.log(`[Find & Replace] Replaced ${total} occurrences in ${touched} items`);
   document.getElementById("results").innerHTML =
     `<div class="small">Replaced ${total} occurrence(s) in ${touched} item(s).</div>`;
+  setStatus(`Replaced ${total} occurrences in ${touched} items.`);
 });
