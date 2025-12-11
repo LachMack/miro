@@ -7,4 +7,3 @@
   });
   console.log("[Find & Replace] icon:click handler registered");
 })();
- 
